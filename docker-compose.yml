@@ -1,0 +1,58 @@
+name: examen-p2
+
+services:
+  hadoop:
+    build: ./hadoop
+    hostname: hadoop
+    environment:
+      DATASET_FILE: ${DATASET_FILE:-ventas_125052538.csv}
+    volumes:
+      - ./data:/data/input:ro            # dataset: solo lectura
+      - ./mapreduce:/opt/mapreduce:ro    # mapper / reducer / secuencial
+      - hadoop_output:/data/output       # salida del job (la lee la API)
+      - ssh_keys:/home/hadoop/.ssh       # llaves SSH generadas al arrancar
+    networks:
+      - pipeline_net
+
+  db:
+    image: postgres:16-alpine
+    env_file: .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data  # volumen nombrado = persistencia
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pipeline_net
+
+  api:
+    build: ./api
+    env_file: .env
+    environment:
+      DB_HOST: db                        # se conecta a db POR NOMBRE DE SERVICIO
+      DB_PORT: "5432"
+      RESULT_FILE: /data/output/resultado/part-00000
+    ports:
+      - "${API_PORT:-5000}:5000"
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - hadoop_output:/data/output:ro
+      - ssh_keys:/ssh-keys:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      hadoop:
+        condition: service_started
+    networks:
+      - pipeline_net
+
+networks:
+  pipeline_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  hadoop_output:
+  ssh_keys:
