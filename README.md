@@ -11,7 +11,7 @@
 
 ```bash
 # 1. Variables de entorno (NO se versiona .env)
-cp .env.example .env            # cambia POSTGRES_PASSWORD
+cp .env.example .env            
 
 # 2. Coloca el dataset (ignorado por git)
 cp /ruta/ventas_125052538.csv data/
@@ -79,31 +79,30 @@ La suma de `num_ventas` de las 240 líneas debe ser **5,000,000**. (Validado de 
 
 ## Tiempos medidos (C2)
 
-> Completar con los `time` de los pasos 6 y 7 en tu máquina.
-
 | Método | Tiempo real |
 |---|---|
 | Hadoop Streaming (standalone) | 12.181 s |
 | Python secuencial | 4.607 s |
 
-¿Coinciden los resultados? `diff` → **sí / no**
+¿Coinciden los resultados? `diff` → **Sí**
 
-**Explicación (1 párrafo):** _Ajusta según lo que midas._ En este escenario el script secuencial suele ganar:
-Hadoop en modo standalone corre en **una sola máquina y sin HDFS**, así que no hay paralelismo
-real entre nodos, y además paga el costo de arrancar la JVM, crear el job local, lanzar procesos
-Python por cada tarea (streaming por stdin/stdout), ordenar (shuffle/sort) y escribir archivos
-intermedios. Con 350 MB, que caben sin problema en una sola lectura secuencial, ese
-overhead supera cualquier beneficio. MapReduce conviene cuando los datos no caben en una máquina
-o cuando hay un clúster que reparte el trabajo en paralelo.
+**Explicación:** En este caso el script de Python fue más rápido que Hadoop (4.6 s contra 12.2 s,
+más o menos 2.6 veces). Esto pasa porque Hadoop en modo standalone corre en una sola computadora,
+así que no puede repartir el trabajo entre varias máquinas. Además,
+antes de empezar a procesar tiene que hacer varias cosas: arrancar Java, preparar el trabajo,
+abrir un proceso de Python para cada tarea, ordenar los resultados intermedios y guardarlos en
+archivos. Todo eso toma tiempo. El archivo de 350 MB no es tan grande, y Python lo lee de corrido
+en una sola pasada sin tanto trámite. Hadoop se vuelve mejor cuando los datos son gigantescos y no
+caben en una sola computadora, o cuando hay muchas máquinas trabajando al mismo tiempo.
 
 ## Evidencias (carpeta `evidencias/`)
 
-- [ ] `hadoop version`
-- [ ] `ssh localhost` y `ssh hadoop@hadoop` desde `api` sin contraseña
-- [ ] Salida del job (`part-00000`) y tiempos
-- [ ] Respuesta de `GET /resultados` y `GET /resultados/<clave>`
-- [ ] POST/PUT/DELETE funcionando
-- [ ] `docker compose down` / `up` y datos persistentes
+-`hadoop version`
+-`ssh localhost` y `ssh hadoop@hadoop` desde `api` sin contraseña
+-Salida del job (`part-00000`) y tiempos
+-Respuesta de `GET /resultados` y `GET /resultados/<clave>`
+-POST/PUT/DELETE funcionando
+-`docker compose down` / `up` y datos persistentes
 
 ## Parte E – Teoría
 
