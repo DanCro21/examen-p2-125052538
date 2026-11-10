@@ -1,7 +1,7 @@
 # Examen Segundo Parcial – Pipeline de datos contenerizado
 
 - **Matrícula:** 125052538
-- **Dataset:** `ventas_125052538.csv` (5,000,000 filas, ~350 MB) — *no se sube al repo*
+- **Dataset:** `ventas_125052538.csv` (5,000,000 filas, ~350 MB)
 - **Pregunta asignada:** **Ingreso total por hora del día (0–23) y categoría** (`ingreso = cantidad × precio_unitario`; la hora sale de `fecha_hora`).
   - Clave del resultado: `hora` + `categoria` (24 horas × 10 categorías = 240 registros)
   - Salida: `hora <TAB> categoria <TAB> total_ingresos <TAB> num_ventas`
@@ -11,7 +11,7 @@
 
 ```bash
 # 1. Variables de entorno (NO se versiona .env)
-cp .env.example .env            # y cambia POSTGRES_PASSWORD
+cp .env.example .env            # cambia POSTGRES_PASSWORD
 
 # 2. Coloca el dataset (ignorado por git)
 cp /ruta/ventas_125052538.csv data/
@@ -23,12 +23,13 @@ docker compose up -d --build
 docker compose exec -u hadoop hadoop hadoop version
 
 # 5. Parte B: SSH sin contraseña
-docker compose exec -u hadoop hadoop ssh localhost hostname      # dentro de hadoop
-docker compose exec api ssh hadoop@hadoop hostname               # de api -> hadoop
+docker compose exec -u hadoop hadoop ssh -o BatchMode=yes localhost 'echo "ssh localhost OK: $(whoami)@$(hostname)"'     # dentro de hadoop
+docker compose exec api ssh -o BatchMode=yes hadoop@hadoop 'echo "api -> hadoop OK: $(whoami)@$(hostname)"'             # de api -> hadoop
 
 # 6. Parte C: job MapReduce (con tiempo)
 docker compose exec -u hadoop hadoop bash -c '
-  cd /opt/mapreduce && rm -rf /data/output/resultado
+  mkdir -p /tmp/job && cp /opt/mapreduce/*.py /tmp/job/ && cd /tmp/job
+  rm -rf /data/output/resultado
   time hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \
     -input /data/input/$DATASET_FILE \
     -output /data/output/resultado \
@@ -82,8 +83,8 @@ La suma de `num_ventas` de las 240 líneas debe ser **5,000,000**. (Validado de 
 
 | Método | Tiempo real |
 |---|---|
-| Hadoop Streaming (standalone) | _____ s |
-| Python secuencial | _____ s |
+| Hadoop Streaming (standalone) | 12.181 s |
+| Python secuencial | 4.607 s |
 
 ¿Coinciden los resultados? `diff` → **sí / no**
 
